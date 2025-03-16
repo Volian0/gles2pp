@@ -4,6 +4,8 @@ project(gles2pp)
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "src/*.cpp")
 
+include(FindOpenGL)
+
 set(CMAKE_CXX_CLANG_TIDY
     clang-tidy;
     -header-filter=include;
@@ -14,5 +16,7 @@ add_library(gles2pp STATIC ${SRC_FILES})
 add_library(gles2pp::gles2pp ALIAS gles2pp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC OpenGL::GLES2)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20) 
