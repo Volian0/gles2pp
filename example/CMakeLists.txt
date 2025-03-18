@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.31)
 
-project(gles2pp)
+project(example)
 
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "src/*.cpp")
+add_subdirectory(.. [EXCLUDE_FROM_ALL])
 
-include(FindOpenGL)
+find_package(SDL3 REQUIRED)
 
 set(CMAKE_CXX_CLANG_TIDY
     clang-tidy;
@@ -12,11 +12,12 @@ set(CMAKE_CXX_CLANG_TIDY
     -checks=readability-*,portability-*,performance-*,modernize-*,cppcoreguidelines-*,bugprone-*,-performance-enum-size,-bugprone-suspicious-stringview-data-usage,-readability-inconsistent-declaration-parameter-name,-cppcoreguidelines-pro-type-reinterpret-cast,-performance-no-int-to-ptr,-readability-static-accessed-through-instance,-bugprone-easily-swappable-parameters,-cppcoreguidelines-pro-bounds-pointer-arithmetic;
     -warnings-as-errors=*;)
 
-add_library(gles2pp STATIC ${SRC_FILES})
-add_library(gles2pp::gles2pp ALIAS gles2pp)
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "src/*.cpp")
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+file(COPY res/ DESTINATION res/)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenGL::GLES2)
+add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20) 
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} gles2pp::gles2pp SDL3::SDL3)
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)

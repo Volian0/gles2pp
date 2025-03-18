@@ -4,7 +4,7 @@
 
 #include <GLES2/gl2.h>
 
-#include <string_view>
+#include <string>
 
 namespace gles2pp
 {
@@ -37,9 +37,9 @@ public:
     Program(Program&&) = delete;
     auto operator=(Program&&) -> Program& = delete;
 
-    [[nodiscard]] auto get_attribute_location(std::string_view t_name) -> GLint;
+    [[nodiscard]] auto get_attribute_location(const std::string& t_name) -> GLint;
     [[nodiscard]] auto get(Parameter t_parameter) -> GLint;
-    [[nodiscard]] auto get_uniform_location(std::string_view t_name) -> GLint;
+    [[nodiscard]] auto get_uniform_location(const std::string& t_name) -> GLint;
     void link();
     void use();
 };

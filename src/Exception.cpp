@@ -3,7 +3,7 @@
 namespace gles2pp
 {
 
-Exception::Exception(std::string_view t_explanation) : std::runtime_error{t_explanation.data()}
+Exception::Exception(const std::string& t_explanation) : std::runtime_error{t_explanation}
 {
 }
 

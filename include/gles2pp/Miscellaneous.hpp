@@ -109,6 +109,7 @@ inline constexpr auto DEPTH{GL_DEPTH_BUFFER_BIT};
 inline constexpr auto STENCIL{GL_STENCIL_BUFFER_BIT};
 }
 
+void clear(GLbitfield t_buffer_bitmask = BufferBitmask::COLOR);
 void clear_color(GLclampf t_red, GLclampf t_green, GLclampf t_blue, GLclampf t_alpha = 1);
 void disable(Capability t_capability);
 void disable_vertex_attribute_array(GLuint t_index);

@@ -5,6 +5,11 @@
 namespace gles2pp
 {
 
+void clear(GLbitfield t_buffer_bitmask)
+{
+    glClear(t_buffer_bitmask);
+}
+
 void clear_color(GLclampf t_red, GLclampf t_green, GLclampf t_blue, GLclampf t_alpha)
 {
     glClearColor(t_red, t_green, t_blue, t_alpha);

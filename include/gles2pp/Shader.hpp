@@ -4,7 +4,7 @@
 
 #include <GLES2/gl2.h>
 
-#include <string_view>
+#include <string>
 
 namespace gles2pp
 {
@@ -40,8 +40,8 @@ public:
     auto operator=(Shader&&) -> Shader& = delete;
 
     void compile();
-    [[nodiscard]] auto get(Parameter& t_parameter) -> GLint;
-    void source(std::string_view t_source);
+    [[nodiscard]] auto get(Parameter t_parameter) -> GLint;
+    void source(const std::string& t_source);
 };
 
 }

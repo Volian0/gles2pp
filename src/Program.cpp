@@ -14,7 +14,7 @@ Program::~Program()
     glDeleteProgram(get_name());
 }
 
-auto Program::get_attribute_location(std::string_view t_name) -> GLint
+auto Program::get_attribute_location(const std::string& t_name) -> GLint
 {
     const auto attribute_location = glGetAttribLocation(get_name(), t_name.data());
     if (attribute_location == -1)
@@ -31,7 +31,7 @@ auto Program::get(Parameter t_parameter) -> GLint
     return value;
 }
 
-auto Program::get_uniform_location(std::string_view t_name) -> GLint
+auto Program::get_uniform_location(const std::string& t_name) -> GLint
 {
     const auto uniform_location = glGetUniformLocation(get_name(), t_name.data());
     if (uniform_location == -1)
