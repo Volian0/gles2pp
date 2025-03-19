@@ -16,7 +16,7 @@ FetchContent_MakeAvailable(SDL3)
 
 set(CMAKE_CXX_CLANG_TIDY
     clang-tidy;
-    -header-filter=include;
+    -header-filter=include/gles2pp/*;
     -checks=readability-*,portability-*,performance-*,modernize-*,cppcoreguidelines-*,bugprone-*,-performance-enum-size,-bugprone-suspicious-stringview-data-usage,-readability-inconsistent-declaration-parameter-name,-cppcoreguidelines-pro-type-reinterpret-cast,-performance-no-int-to-ptr,-readability-static-accessed-through-instance,-bugprone-easily-swappable-parameters,-cppcoreguidelines-pro-bounds-pointer-arithmetic;
     -warnings-as-errors=*;)
 
@@ -25,7 +25,7 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "src/*.cpp")
 file(COPY res/ DESTINATION res/)
 
 if(EMSCRIPTEN)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sUSE_SDL=3 -s USE_WEBGL2=1 -s FULL_ES2=1 -s MAX_WEBGL_VERSION=2 --preload-file res") 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sMAX_WEBGL_VERSION=2 --preload-file res") 
 endif()
  
 add_executable(${PROJECT_NAME} ${SRC_FILES})
