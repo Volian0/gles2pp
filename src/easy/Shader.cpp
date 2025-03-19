@@ -23,4 +23,12 @@ Shader::Shader(Type t_type, const std::string& t_path) : gles2pp::Shader{t_type}
     }
 }
 
+VertexShader::VertexShader(const std::string& t_path) : Shader{Type::VERTEX, t_path}
+{
+}
+
+FragmentShader::FragmentShader(const std::string& t_path) : Shader{Type::FRAGMENT, t_path}
+{
+}
+
 }

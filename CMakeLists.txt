@@ -17,6 +17,9 @@ add_library(gles2pp::gles2pp ALIAS gles2pp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+if(EMSCRIPTEN)
+else()
 target_link_libraries(${PROJECT_NAME} PUBLIC OpenGL::GLES2)
+endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20) 

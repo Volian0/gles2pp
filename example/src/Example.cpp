@@ -10,6 +10,11 @@
 #include <SDL3/SDL_video.h>
 #include <stb/stb_image.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
+
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -19,6 +24,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 class Context;
 
@@ -145,60 +151,53 @@ private:
     stbi_uc* m_handle;
 };
 
-auto main(int t_argument_size, char* t_arguments[]) -> int
-try
+class Game
 {
-    // Initialize everything
-    SDL sdl(SDL_INIT_VIDEO);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    constexpr unsigned WINDOW_WIDTH{640};
-    constexpr unsigned WINDOW_HEIGHT{360};
-    Window window{"Example", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL};
-    Context context{window};
-    constexpr std::size_t BUFFER_SIZE{50};
+public:
+    constexpr static unsigned WINDOW_WIDTH{640};
+    constexpr static unsigned WINDOW_HEIGHT{360};
+    constexpr static std::size_t BUFFER_SIZE{50};
 
-    // Create buffers
-    gles2pp::easy::ArrayBuffer array_buffer{BUFFER_SIZE};
-    gles2pp::easy::ArrayElementBuffer array_element_buffer{BUFFER_SIZE};
+    Game()
+        : m_sdl{SDL_INIT_VIDEO}, m_window{[]() {
+              SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+              SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+              SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+              return Window{"Example", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL};
+          }()},
+          m_context{m_window}, m_array_buffer{BUFFER_SIZE}, m_array_element_buffer{BUFFER_SIZE},
+          m_vertex_attributes{std::array{
+              gles2pp::easy::VertexAttribute{"a_position", gles2pp::ComponentSize::FOUR, gles2pp::ComponentType::FLOAT},
+              gles2pp::easy::VertexAttribute{"a_uv", gles2pp::ComponentSize::TWO, gles2pp::ComponentType::FLOAT},
+              gles2pp::easy::VertexAttribute{"a_tint", gles2pp::ComponentSize::FOUR, gles2pp::ComponentType::FLOAT}}},
+          m_uniforms{gles2pp::easy::Uniform{"u_sampler"}},
+          m_texture_background{
+              Image{"res/texture_background.png"}.create_texture(gles2pp::easy::Texture2D::ScaleMode::LINEAR)},
+          m_texture_sprite{
+              Image{"res/texture_sprite.png"}.create_texture(gles2pp::easy::Texture2D::ScaleMode::NEAREST)},
+          m_program{gles2pp::easy::VertexShader{"res/vertex_shader.vert"},
+                    gles2pp::easy::FragmentShader{"res/fragment_shader.frag"}, m_vertex_attributes, m_uniforms}
+    {
+        // Set sampler to texture unit 0
+        gles2pp::uniform(m_uniforms[0].get_location(), 0);
 
-    // Specify Generic Vertex Attributes
-    gles2pp::easy::VertexAttributes vertex_attributes{std::array{
-        gles2pp::easy::VertexAttribute{"a_position", gles2pp::ComponentSize::FOUR, gles2pp::ComponentType::FLOAT},
-        gles2pp::easy::VertexAttribute{"a_uv", gles2pp::ComponentSize::TWO, gles2pp::ComponentType::FLOAT},
-        gles2pp::easy::VertexAttribute{"a_tint", gles2pp::ComponentSize::FOUR, gles2pp::ComponentType::FLOAT}}};
+        // Enable vertex attribute arrays
+        m_vertex_attributes.enable();
 
-    // Specify Uniforms
-    gles2pp::easy::Uniforms uniforms{gles2pp::easy::Uniform{"u_sampler"}};
+        // Call glVertexAttribPointer for all attributes
+        m_vertex_attributes.pointer();
 
-    // Get Vertex Attribute and Uniform locations
-    gles2pp::easy::Program program{"res/vertex_shader.vert", "res/fragment_shader.frag", vertex_attributes, uniforms};
+        // Enable face culling
+        gles2pp::enable(gles2pp::Capability::CULL_FACE);
 
-    // Set sampler to texture unit 0
-    gles2pp::uniform(uniforms[0].get_location(), 0);
+        // Enable blending
+        gles2pp::enable(gles2pp::Capability::BLEND);
+        blend_function(gles2pp::SourceBlendFactor::SOURCE_ALPHA,
+                       gles2pp::DestinationBlendFactor::ONE_MINUS_SOURCE_ALPHA);
+    }
 
-    // Enable vertex attribute arrays
-    vertex_attributes.enable();
-
-    // Call glVertexAttribPointer for all attributes
-    vertex_attributes.pointer();
-
-    // Load textures
-    stbi_set_flip_vertically_on_load(1);
-    auto texture_background =
-        Image{"res/texture_background.png"}.create_texture(gles2pp::easy::Texture2D::ScaleMode::LINEAR);
-    auto texture_sprite = Image{"res/texture_sprite.png"}.create_texture(gles2pp::easy::Texture2D::ScaleMode::NEAREST);
-
-    // Enable face culling
-    gles2pp::enable(gles2pp::Capability::CULL_FACE);
-
-    // Enable blending
-    gles2pp::enable(gles2pp::Capability::BLEND);
-    blend_function(gles2pp::SourceBlendFactor::SOURCE_ALPHA, gles2pp::DestinationBlendFactor::ONE_MINUS_SOURCE_ALPHA);
-
-    // Main loop
-    while ([&]() {
+    auto frame() -> bool
+    {
         for (SDL_Event event; SDL_PollEvent(&event);)
         {
             if (event.type == SDL_EVENT_QUIT)
@@ -209,54 +208,84 @@ try
 
         // Clear screen and buffers
         gles2pp::clear();
-        array_buffer.clear();
-        array_element_buffer.clear();
+        m_array_buffer.clear();
+        m_array_element_buffer.clear();
 
         constexpr auto aspect_ratio =
             static_cast<gles2pp::Float>(WINDOW_WIDTH) / static_cast<gles2pp::Float>(WINDOW_HEIGHT);
 
-        { // Render background
-            texture_background.bind();
-            const std::array<gles2pp::Float, 40> background_vertices{-1, -1, 0, 1, 0,
-                                                                     0,  1,  1, 1, 1,
-                                                                     -1, 1,  0, 1, 0,
-                                                                     1,  1,  1, 1, 1,
-                                                                     1,  1,  0, 1, 1.0 / aspect_ratio,
-                                                                     1,  1,  1, 1, 1,
-                                                                     1,  -1, 0, 1, 1.0 / aspect_ratio,
-                                                                     0,  1,  1, 1, 1};
-            const std::array<gles2pp::UShort, 6> background_indices{2, 1, 0, 0, 3, 2};
-            array_buffer.insert(background_vertices);
-            array_element_buffer.insert(background_indices);
-            array_buffer.subdata();
-            array_element_buffer.subdata();
-            array_element_buffer.draw();
-        }
+        // Render background
+        m_texture_background.bind();
+        const std::array<gles2pp::Float, 40> background_vertices{-1, -1, 0, 1, 0,
+                                                                 0,  1,  1, 0, 1,
+                                                                 -1, 1,  0, 1, 0,
+                                                                 1,  1,  1, 1, 1,
+                                                                 1,  1,  0, 1, 1.0 / aspect_ratio,
+                                                                 1,  1,  1, 1, 1,
+                                                                 1,  -1, 0, 1, 1.0 / aspect_ratio,
+                                                                 0,  1,  1, 1, 1};
+        const std::array<gles2pp::UShort, 6> background_indices{2, 1, 0, 0, 3, 2};
+        m_array_buffer.insert(background_vertices);
+        m_array_element_buffer.insert(background_indices);
+        m_array_buffer.subdata();
+        m_array_element_buffer.subdata();
+        m_array_element_buffer.draw();
 
         // Clear buffers
-        array_buffer.clear();
-        array_element_buffer.clear();
+        m_array_buffer.clear();
+        m_array_element_buffer.clear();
 
-        { // Render sprite
-            texture_sprite.bind();
-            const std::array<gles2pp::Float, 40> sprite_vertices{
-                -1 * 0.5 / aspect_ratio, -1 * 0.5, 0, 1, 0, 0, 1, 1, 1, 0,
-                -1 * 0.5 / aspect_ratio, 1 * 0.5,  0, 1, 0, 1, 1, 1, 1, 1,
-                1 * 0.5 / aspect_ratio,  1 * 0.5,  0, 1, 1, 1, 1, 1, 1, 1,
-                1 * 0.5 / aspect_ratio,  -1 * 0.5, 0, 1, 1, 0, 1, 1, 1, 0};
-            const std::array<gles2pp::UShort, 6> sprite_indices{2, 1, 0, 0, 3, 2};
-            array_buffer.insert(sprite_vertices);
-            array_element_buffer.insert(sprite_indices);
-            array_buffer.subdata();
-            array_element_buffer.subdata();
-            array_element_buffer.draw();
-        }
+        // Render sprite
+        m_texture_sprite.bind();
+        const std::array<gles2pp::Float, 40> sprite_vertices{-1 * 0.5 / aspect_ratio, -1 * 0.5, 0, 1, 0, 0, 1, 1, 1, 0,
+                                                             -1 * 0.5 / aspect_ratio, 1 * 0.5,  0, 1, 0, 1, 1, 1, 1, 1,
+                                                             1 * 0.5 / aspect_ratio,  1 * 0.5,  0, 1, 1, 1, 1, 1, 1, 1,
+                                                             1 * 0.5 / aspect_ratio,  -1 * 0.5, 0, 1, 1, 0, 1, 1, 1, 0};
+        const std::array<gles2pp::UShort, 6> sprite_indices{2, 1, 0, 0, 3, 2};
+        m_array_buffer.insert(sprite_vertices);
+        m_array_element_buffer.insert(sprite_indices);
+        m_array_buffer.subdata();
+        m_array_element_buffer.subdata();
+        m_array_element_buffer.draw();
 
-        window.swap();
+        m_window.swap();
         return true;
-    }())
+    }
+
+private:
+    SDL m_sdl;
+    Window m_window;
+    Context m_context;
+    gles2pp::easy::ArrayBuffer m_array_buffer;
+    gles2pp::easy::ArrayElementBuffer m_array_element_buffer;
+    gles2pp::easy::VertexAttributes<3> m_vertex_attributes;
+    gles2pp::easy::Uniforms<1> m_uniforms;
+    gles2pp::easy::Texture2D m_texture_background;
+    gles2pp::easy::Texture2D m_texture_sprite;
+    gles2pp::easy::Program m_program;
+};
+
+auto main(int t_argument_size, char* t_arguments[]) -> int
+try
+{
+    stbi_set_flip_vertically_on_load(1);
+    Game game;
+
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop_arg(
+        [](void* t_user_data) {
+            if (!static_cast<Game*>(t_user_data)->frame())
+            {
+                emscripten_cancel_main_loop();
+            }
+        },
+        &game, 0, true);
+#else 
+    while (game.frame())
     {
     }
+#endif
+
     return EXIT_SUCCESS;
 }
 catch (const std::exception& exception)

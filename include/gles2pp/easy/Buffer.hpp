@@ -14,7 +14,7 @@ namespace gles2pp::easy
 template <typename Type> class Buffer : public gles2pp::Buffer
 {
 public:
-    Buffer(Target t_target, std::size_t t_size) : m_target{t_target}
+    Buffer(Target t_target, std::size_t t_size)
     {
         gles2pp::Buffer::bind(t_target);
         data(t_target, t_size * sizeof(Type));
@@ -23,7 +23,7 @@ public:
 
     constexpr void insert(std::size_t t_size, const Type* t_values)
     {
-        m_buffer.insert(m_buffer.end(), t_values, t_values + t_size);
+        insert({t_values, t_size});
     }
 
     constexpr void insert(Type t_value)
@@ -33,15 +33,15 @@ public:
 
     constexpr void insert(std::span<const Type> t_data)
     {
-        insert(t_data.size(), t_data.data());
+        m_buffer.insert(m_buffer.end(), t_data.begin(), t_data.end());
     }
 
-    void bind()
+    void bind(Target m_target)
     {
         gles2pp::Buffer::bind(m_target);
     }
 
-    void subdata()
+    void subdata(Target m_target)
     {
         gles2pp::Buffer::subdata(m_target,
                                  {reinterpret_cast<const std::byte*>(m_buffer.data()), m_buffer.size() * sizeof(Type)});
@@ -58,7 +58,6 @@ public:
     }
 
 private:
-    Target m_target;
     std::vector<Type> m_buffer;
 };
 
@@ -66,6 +65,9 @@ class ArrayBuffer : public Buffer<Float>
 {
 public:
     ArrayBuffer(std::size_t t_size);
+
+    void bind();
+    void subdata();
 };
 
 class ArrayElementBuffer : public Buffer<UShort>
@@ -73,6 +75,8 @@ class ArrayElementBuffer : public Buffer<UShort>
 public:
     ArrayElementBuffer(std::size_t t_size);
 
+    void bind();
+    void subdata();
     void draw(Primitive t_primitive = Primitive::TRIANGLES);
 };
 

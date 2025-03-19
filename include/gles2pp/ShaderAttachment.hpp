@@ -11,7 +11,7 @@ class Shader;
 class ShaderAttachment
 {
 public:
-    ShaderAttachment(Program& t_program, Shader& t_shader);
+    ShaderAttachment(Program& t_program, const Shader& t_shader);
     ~ShaderAttachment();
 
     ShaderAttachment(const ShaderAttachment&) = delete;
