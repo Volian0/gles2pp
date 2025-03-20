@@ -163,7 +163,7 @@ public:
               SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
               SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
               SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-              return Window{"Example", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL};
+              return Window{"Example", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE};
           }()},
           m_context{m_window}, m_array_buffer{BUFFER_SIZE}, m_array_element_buffer{BUFFER_SIZE},
           m_vertex_attributes{std::array{
@@ -176,7 +176,8 @@ public:
           m_texture_sprite{
               Image{"res/texture_sprite.png"}.create_texture(gles2pp::easy::Texture2D::ScaleMode::NEAREST)},
           m_program{gles2pp::easy::VertexShader{"res/vertex_shader.vert"},
-                    gles2pp::easy::FragmentShader{"res/fragment_shader.frag"}, m_vertex_attributes, m_uniforms}
+                    gles2pp::easy::FragmentShader{"res/fragment_shader.frag"}, m_vertex_attributes, m_uniforms},
+          m_aspect_ratio{static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT)}
     {
         // Set sampler to texture unit 0
         gles2pp::uniform(m_uniforms[0].get_location(), 0);
@@ -204,6 +205,11 @@ public:
             {
                 return false;
             }
+            if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+            {
+                gles2pp::viewport(event.window.data1, event.window.data2);
+                m_aspect_ratio = static_cast<float>(event.window.data1) / static_cast<float>(event.window.data2);
+            }
         }
 
         // Clear screen and buffers
@@ -211,18 +217,15 @@ public:
         m_array_buffer.clear();
         m_array_element_buffer.clear();
 
-        constexpr auto aspect_ratio =
-            static_cast<gles2pp::Float>(WINDOW_WIDTH) / static_cast<gles2pp::Float>(WINDOW_HEIGHT);
-
         // Render background
         m_texture_background.bind();
         const std::array<gles2pp::Float, 40> background_vertices{-1, -1, 0, 1, 0,
                                                                  0,  1,  1, 0, 1,
                                                                  -1, 1,  0, 1, 0,
                                                                  1,  1,  1, 1, 1,
-                                                                 1,  1,  0, 1, 1.0 / aspect_ratio,
+                                                                 1,  1,  0, 1, 1.0F / m_aspect_ratio,
                                                                  1,  1,  1, 1, 1,
-                                                                 1,  -1, 0, 1, 1.0 / aspect_ratio,
+                                                                 1,  -1, 0, 1, 1.0F / m_aspect_ratio,
                                                                  0,  1,  1, 1, 1};
         const std::array<gles2pp::UShort, 6> background_indices{2, 1, 0, 0, 3, 2};
         m_array_buffer.insert(background_vertices);
@@ -237,10 +240,11 @@ public:
 
         // Render sprite
         m_texture_sprite.bind();
-        const std::array<gles2pp::Float, 40> sprite_vertices{-1 * 0.5 / aspect_ratio, -1 * 0.5, 0, 1, 0, 0, 1, 1, 1, 0,
-                                                             -1 * 0.5 / aspect_ratio, 1 * 0.5,  0, 1, 0, 1, 1, 1, 1, 1,
-                                                             1 * 0.5 / aspect_ratio,  1 * 0.5,  0, 1, 1, 1, 1, 1, 1, 1,
-                                                             1 * 0.5 / aspect_ratio,  -1 * 0.5, 0, 1, 1, 0, 1, 1, 1, 0};
+        const std::array<gles2pp::Float, 40> sprite_vertices{
+            -1.0F * 0.5F / m_aspect_ratio, -1 * 0.5, 0, 1, 0, 0, 1, 1, 1, 0,
+            -1.0F * 0.5F / m_aspect_ratio, 1 * 0.5,  0, 1, 0, 1, 1, 1, 1, 1,
+            1.0F * 0.5F / m_aspect_ratio,  1 * 0.5,  0, 1, 1, 1, 1, 1, 1, 1,
+            1.0F * 0.5F / m_aspect_ratio,  -1 * 0.5, 0, 1, 1, 0, 1, 1, 1, 0};
         const std::array<gles2pp::UShort, 6> sprite_indices{2, 1, 0, 0, 3, 2};
         m_array_buffer.insert(sprite_vertices);
         m_array_element_buffer.insert(sprite_indices);
@@ -263,6 +267,7 @@ private:
     gles2pp::easy::Texture2D m_texture_background;
     gles2pp::easy::Texture2D m_texture_sprite;
     gles2pp::easy::Program m_program;
+    float m_aspect_ratio;
 };
 
 auto main(int t_argument_size, char* t_arguments[]) -> int
@@ -280,7 +285,7 @@ try
             }
         },
         &game, 0, true);
-#else 
+#else
     while (game.frame())
     {
     }
